@@ -40,5 +40,16 @@ public function pembelian()
     );
 }
 
+public function getLatestPrice()
+{
+    // Ambil harga beli terakhir yang terkait dengan produk ini
+    return $this->pembelian()->latest()->first()->harga_beli ?? 0; // Mengembalikan harga beli terakhir atau 0 jika tidak ada pembelian
+}
+
+public function laporanKeuntungan()
+{
+    return $this->belongsTo(LaporanKeuntungan::class, 'laporan_keuntungan_id');
+}
+
 
 }

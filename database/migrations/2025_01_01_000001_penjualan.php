@@ -20,7 +20,8 @@ return new class extends Migration
         $table->integer('jumlah_barang')->default(0);
         $table->decimal('subtotal', 15, 2)->default(0);
         $table->decimal('ppn', 15, 2)->default(0);
-        $table->decimal('total_harga', 15, 2)->default(0);
+        $table->decimal('total_harga', 20, 2)->default(0);
+        $table->decimal('keuntungan', 20, 2)->default(0); 
         $table->timestamps();
     });    
 }

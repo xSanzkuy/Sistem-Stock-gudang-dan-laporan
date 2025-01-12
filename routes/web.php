@@ -6,6 +6,7 @@ use App\Http\Controllers\PenjualanController;
 use App\Http\Controllers\PembelianController;
 use App\Http\Controllers\HutangController;
 use App\Http\Controllers\PiutangController;
+use App\Http\Controllers\LaporanKeuntunganController;
 
 // Redirect root URL to login or dashboard
 Route::get('/', function () {
@@ -49,3 +50,12 @@ Route::middleware(['auth'])->group(function () {
 Route::fallback(function () {
     return redirect('/login')->with('error', 'Halaman yang Anda cari tidak tersedia.');
 });
+
+
+
+
+Route::get('/laporan', [LaporanKeuntunganController::class, 'index'])->name('laporan.index');
+Route::get('/laporan/{id}/detail', [LaporanKeuntunganController::class, 'detail'])->name('laporan.detail');
+
+Route::get('/laporan/export', [LaporanKeuntunganController::class, 'exportExcel'])->name('laporan.export');
+Route::get('/laporan/export-pdf', [LaporanKeuntunganController::class, 'exportPDF'])->name('laporan.export_pdf');

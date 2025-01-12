@@ -104,12 +104,18 @@
                             <i class="bi bi-cash-stack"></i> Hutang
                         </a>
                     </li>
-                    <li class="nav-item">
+                    <li class="nav-item">   
                         <a class="nav-link text-white {{ Request::is('piutang*') ? 'active' : '' }}" href="{{ route('piutang.index') }}">
                             <i class="bi bi-currency-exchange"></i> Piutang
                         </a>
                     </li>
-                </ul>
+              
+                <li class="nav-item">
+                        <a class="nav-link text-white {{ Request::is('laporan*') ? 'active' : '' }}" href="{{ route('laporan.index') }}">
+                            <i class="bi bi-bar-chart"></i> Laporan
+                        </a>
+                    </li>
+                    </ul>
                 <!-- Logout button -->
                 <form action="{{ route('logout') }}" method="POST" class="mt-auto">
                     @csrf

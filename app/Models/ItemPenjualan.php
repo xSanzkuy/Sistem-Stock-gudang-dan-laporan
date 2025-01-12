@@ -18,5 +18,11 @@ class ItemPenjualan extends Model
     {
         return $this->belongsTo(Produk::class, 'produk_id');
     }
+
+    public function pembelian()
+    {
+        // Asumsi bahwa setiap produk bisa memiliki banyak pembelian (history pembelian)
+        return $this->belongsToMany(Pembelian::class, 'item_pembelian', 'item_penjualan_id', 'pembelian_id');
+    }
 }
 
