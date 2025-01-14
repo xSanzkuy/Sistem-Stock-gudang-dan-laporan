@@ -16,18 +16,18 @@ return new class extends Migration
             $table->string('nama_pelanggan');
             $table->date('tanggal');
             $table->string('no_faktur');
-            $table->decimal('jumlah', 10, 2);
-            $table->decimal('pembayaran', 10, 2)->default(0);
+            $table->decimal('jumlah', 15, 2);
+            $table->decimal('pembayaran', 15, 2)->default(0);
+            $table->decimal('kekurangan', 15, 2)->default(0); // Menghapus penggunaan AFTER
             $table->enum('status', ['Belum Lunas', 'Lunas'])->default('Belum Lunas');
             $table->timestamps();
         });
     }
-    
 
     /**
      * Reverse the migrations.
      */
-    public function down(): void
+    public function down()
     {
         Schema::dropIfExists('piutang');
     }

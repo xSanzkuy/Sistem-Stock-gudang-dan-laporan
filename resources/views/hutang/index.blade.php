@@ -4,6 +4,7 @@
 <div class="container mt-5">
     <h1>Daftar Hutang</h1>
     <a href="{{ route('hutang.create') }}" class="btn btn-primary mb-3">Tambah Hutang</a>
+    
     <table class="table table-bordered">
         <thead class="table-dark">
             <tr>
@@ -27,10 +28,14 @@
                     <td>{{ $item->status }}</td>
                     <td>
                         <a href="{{ route('hutang.edit', $item->id) }}" class="btn btn-warning btn-sm">Edit</a>
-                        <form action="{{ route('hutang.destroy', $item->id) }}" method="POST" style="display:inline;">
+                        
+                        <!-- Tombol Hapus -->
+                        <button type="button" class="btn btn-danger btn-sm btn-delete" data-id="{{ $item->id }}" data-name="{{ $item->nama_supplier }}">Hapus</button>
+
+                        <!-- Form Hapus -->
+                        <form id="form-delete-{{ $item->id }}" action="{{ route('hutang.destroy', $item->id) }}" method="POST" style="display:none;">
                             @csrf
                             @method('DELETE')
-                            <button type="submit" class="btn btn-danger btn-sm">Hapus</button>
                         </form>
                     </td>
                 </tr>
@@ -44,7 +49,43 @@
 
     <!-- Tampilkan tautan pagination -->
     <div class="d-flex justify-content-center mt-4">
-    {{ $hutang->links('pagination::bootstrap-5') }}
+        {{ $hutang->links('pagination::bootstrap-5') }}
     </div>
 </div>
+@endsection
+
+@section('scripts')
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    // Pastikan SweetAlert2 terdeteksi
+    if (typeof Swal === 'undefined') {
+        console.error("SweetAlert2 (Swal) tidak terdeteksi! Pastikan library terpasang dengan benar.");
+        return;
+    }
+
+    // Event Listener untuk Tombol Hapus
+    document.querySelectorAll('.btn-delete').forEach(function (button) {
+        button.addEventListener('click', function () {
+            const id = this.getAttribute('data-id');
+            const name = this.getAttribute('data-name');
+
+            Swal.fire({
+                title: 'Apakah Anda yakin?',
+                text: `Hutang dengan nama supplier ${name} akan dihapus secara permanen!`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#3085d6',
+                cancelButtonColor: '#d33',
+                confirmButtonText: 'Ya, hapus!',
+                cancelButtonText: 'Batal'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    document.getElementById(`form-delete-${id}`).submit();
+                }
+            });
+        });
+    });
+});
+</script>
 @endsection

@@ -66,7 +66,7 @@
     </div>
 
     <div class="text-center mt-4 no-print">
-        <a href="{{ route('penjualan.index') }}" class="btn btn-secondary">Kembali</a>
+    <a href="{{ route('penjualan.index', ['page' => $currentPage]) }}" class="btn btn-secondary">Kembali</a>
         <button class="btn btn-primary" onclick="window.print()">Cetak</button>
     </div>
 </div>

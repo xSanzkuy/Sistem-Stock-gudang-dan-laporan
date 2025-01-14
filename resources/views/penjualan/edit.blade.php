@@ -15,9 +15,11 @@
         </div>
     @endif
 
-    <form action="{{ route('penjualan.update', $penjualan->id) }}" method="POST">
-        @csrf
-        @method('PUT')
+    <form action="{{ route('penjualan.update', ['penjualan' => $penjualan->id, 'page' => request('page')]) }}" method="POST">
+    @csrf
+    @method('PUT')
+
+
         <div class="mb-3">
             <label for="no_faktur" class="form-label">No Faktur</label>
             <input type="text" class="form-control" name="no_faktur" value="{{ $penjualan->no_faktur }}" required>
@@ -75,6 +77,7 @@
 <!-- Tombol Tambah dan Simpan -->
 <div class="d-flex justify-content-between mt-3">
     <button type="button" class="btn btn-primary" id="add-row">Tambah Barang</button>
+    <a href="{{ route('penjualan.index', ['page' => request('page')]) }}" class="btn btn-secondary">Batal</a>
     <button type="submit" class="btn btn-success">Simpan Perubahan</button>
 </div>
 

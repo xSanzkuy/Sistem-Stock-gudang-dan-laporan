@@ -70,6 +70,12 @@
             </tbody>
         </table>
 
+        <!-- Input PPN Manual -->
+        <div class="mb-3">
+            <label for="ppn">PPN (%)</label>
+            <input type="number" class="form-control" id="ppn" name="ppn" value="{{ old('ppn') }}" required>
+        </div>
+
         <div class="mb-3">
             <label for="metode_pembayaran">Metode Pembayaran</label>
             <select name="metode_pembayaran" id="metode_pembayaran" class="form-control" required>
@@ -84,7 +90,6 @@
 </div>
 @endsection
 
-@section('scripts')
 @section('scripts')
 <script>
   document.addEventListener('DOMContentLoaded', function () {
@@ -122,4 +127,3 @@
   });
 </script>
 @endsection
-

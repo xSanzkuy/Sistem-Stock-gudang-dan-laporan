@@ -91,6 +91,11 @@
         <button type="button" class="btn btn-primary" id="add-row">Tambah Barang</button>
 
         <div class="mb-3 mt-3">
+      
+    <label for="pembayaran">Pembayaran</label>
+    <input type="number" class="form-control" id="pembayaran" name="pembayaran" value="0" required>
+</div>
+
             <label for="metode_pembayaran">Metode Pembayaran</label>
             <select name="metode_pembayaran" class="form-control" required>
                 <option value="tunai" {{ old('metode_pembayaran') == 'tunai' ? 'selected' : '' }}>Tunai</option>

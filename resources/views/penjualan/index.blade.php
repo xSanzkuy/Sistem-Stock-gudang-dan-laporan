@@ -60,9 +60,14 @@
                     <td>{{ $item->produk_nama }}</td>
                     <td>{{ number_format($item->total_harga, 0, ',', '.') }}</td>
                     <td>
-                        <a href="{{ route('penjualan.show', $item->id) }}" class="btn btn-info btn-sm">Detail</a>
-                        <a href="{{ route('penjualan.edit', $item->id) }}" class="btn btn-warning btn-sm">Edit</a>
-                        <form action="{{ route('penjualan.destroy', $item->id) }}" method="POST" style="display:inline;">
+                        <!-- Tombol Detail -->
+                        <a href="{{ route('penjualan.show', ['penjualan' => $item->id, 'page' => request('page')]) }}" class="btn btn-info btn-sm">Detail</a>
+                        
+                        <!-- Tombol Edit -->
+                        <a href="{{ route('penjualan.edit', ['penjualan' => $item->id, 'page' => request('page')]) }}" class="btn btn-warning btn-sm">Edit</a>
+                        
+                        <!-- Tombol Hapus -->
+                        <form action="{{ route('penjualan.destroy', ['penjualan' => $item->id, 'page' => request('page')]) }}" method="POST" style="display:inline;">
                             @csrf
                             @method('DELETE')
                             <button type="button" class="btn btn-danger btn-sm delete-button" data-name="{{ $item->no_faktur }}">Hapus</button>
@@ -79,10 +84,8 @@
 
     <!-- Pagination -->
     <div class="d-flex justify-content-center mt-4">
-    {{ $penjualan->links('pagination::bootstrap-5') }}
-</div>
-
-
+        {{ $penjualan->appends(request()->query())->links('pagination::bootstrap-5') }}
+    </div>
 </div>
 @endsection
 

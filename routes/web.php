@@ -59,3 +59,7 @@ Route::get('/laporan/{id}/detail', [LaporanKeuntunganController::class, 'detail'
 
 Route::get('/laporan/export', [LaporanKeuntunganController::class, 'exportExcel'])->name('laporan.export');
 Route::get('/laporan/export-pdf', [LaporanKeuntunganController::class, 'exportPDF'])->name('laporan.export_pdf');
+Route::get('/api/produk', [PenjualanController::class, 'getProduk'])->name('api.produk');
+
+Route::get('piutang/{id}', [PiutangController::class, 'show'])->name('piutang.show');
+Route::post('/piutang/bayar/{id}', [PiutangController::class, 'bayarPiutang'])->name('piutang.bayar');

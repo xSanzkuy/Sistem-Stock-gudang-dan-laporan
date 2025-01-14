@@ -3,6 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Tambahkan di dalam <head> -->
+    <!-- Load jQuery -->
+<script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<!-- Load Select2 -->
+<link href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.1.0/css/select2.min.css" rel="stylesheet" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.1.0/js/select2.min.js"></script>
+
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
     <title>@yield('title', 'Aplikasi Akuntansi')</title>
@@ -151,12 +160,18 @@
     <script>
         // JavaScript untuk toggle sidebar
         const toggleSidebarButton = document.getElementById('toggleSidebar');
-        const sidebar = document.getElementById('sidebar');
+const sidebar = document.getElementById('sidebar');
 
-        toggleSidebarButton.addEventListener('click', () => {
-            sidebar.classList.toggle('hidden');
-        });
+// Pastikan sidebar terlihat saat pertama kali dimuat
+sidebar.classList.remove('hidden');
+
+// Toggle sidebar ketika tombol diklik
+toggleSidebarButton.addEventListener('click', () => {
+    sidebar.classList.toggle('hidden');
+});
+    
     </script>
     @yield('scripts')
 </body>
 </html>
+        

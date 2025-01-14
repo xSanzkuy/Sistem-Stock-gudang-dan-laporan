@@ -26,17 +26,17 @@
             </tr>
         </thead>
         <tbody>
-            @foreach($pembelian->details as $detail)
-                <tr>
-                    <td>{{ $detail->qty }}</td>
-                   <td>{{ $detail->produk->nama_barang ?? 'Produk tidak ditemukan' }}</td>
+    @foreach($pembelian->details as $detail)
+        <tr>
+            <td>{{ $detail->qty }}</td>
+            <td>{{ $detail->produk->nama_barang ?? 'Produk tidak ditemukan' }}</td>
+            <td>{{ number_format($detail->harga, 0, ',', '.') }}</td>
+            <td>{{ number_format($detail->diskon, 0, ',', '.') }}</td>
+            <td>{{ number_format($detail->jumlah, 0, ',', '.') }}</td>
+        </tr>
+    @endforeach
+</tbody>
 
-                    <td>{{ number_format($detail->harga, 0, ',', '.') }}</td>
-                    <td>{{ number_format($detail->diskon, 0, ',', '.') }}</td>
-                    <td>{{ number_format($detail->jumlah, 0, ',', '.') }}</td>
-                </tr>
-            @endforeach
-        </tbody>
         <tfoot>
             <tr>
                 <td colspan="4" class="text-end"><strong>Subtotal:</strong></td>

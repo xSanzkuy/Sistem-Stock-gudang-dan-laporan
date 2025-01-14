@@ -46,6 +46,7 @@ class PembelianController extends Controller
             'tanggal' => 'required|date',
             'supplier' => 'required|string',
             'metode_pembayaran' => 'required|in:kredit,tunai',
+            'ppn' => 'required|numeric|min:0', // Validasi untuk PPN
             'details' => 'required|array|min:1',
             'details.*.kode' => 'required|string',
             'details.*.jenis' => 'required|string',
@@ -54,79 +55,100 @@ class PembelianController extends Controller
             'details.*.harga' => 'required|numeric|min:0',
             'details.*.diskon' => 'nullable|numeric|min:0|max:100',
         ]);
-    
-        \DB::beginTransaction();
-    
+
+        DB::beginTransaction();
+
         try {
             $subtotal = 0;
-    
-            foreach ($validated['details'] as $detail) {
-                // Cari atau buat produk berdasarkan kode, jenis, dan nama_barang
-                $produk = Produk::firstOrCreate(
-                    ['kode' => $detail['kode'], 'jenis' => $detail['jenis'], 'nama_barang' => $detail['nama_barang']],
-                    [
-                        'stok' => 0,
-                        'harga_beli' => $detail['harga'],
-                        'harga_jual' => $detail['harga'] * 1.2, // markup 20%
-                    ]
-                );
-    
-                // Update stok produk
-                $produk->stok += $detail['qty'];
-                $produk->save();
-    
-                // Hitung subtotal
-                $jumlah = ($detail['qty'] * $detail['harga']) - (($detail['qty'] * $detail['harga']) * ($detail['diskon'] / 100));
-                if ($jumlah < 0) {
-                    throw new \Exception("Jumlah tidak valid untuk produk: {$detail['nama_barang']}");
-                }
-    
-                $subtotal += $jumlah;
-            }
-    
-            // Simpan data pembelian
+
+            // Simpan data pembelian utama
             $pembelian = Pembelian::create([
                 'no_faktur' => $validated['no_faktur'],
                 'tanggal' => $validated['tanggal'],
                 'supplier' => $validated['supplier'],
-                'subtotal' => $subtotal,
-                'ppn' => $subtotal * 0.1, // PPN 10%
-                'total_harga' => $subtotal + ($subtotal * 0.1),
+                'subtotal' => 0, // Akan diperbarui nanti
+                'ppn' => 0,
+                'total_harga' => 0,
             ]);
-    
+
+            // Iterasi untuk menyimpan detail pembelian dan memperbarui stok produk
             foreach ($validated['details'] as $detail) {
+                // Cek apakah produk sudah ada berdasarkan kode
+                $produk = Produk::where('kode', $detail['kode'])->first();
+
+                if ($produk) {
+                    // Jika produk sudah ada, perbarui stok
+                    $produk->stok += $detail['qty'];
+                    $produk->save();
+                } else {
+                    // Jika produk belum ada, buat produk baru
+                    $produk = Produk::create([
+                        'kode' => $detail['kode'],
+                        'jenis' => $detail['jenis'],
+                        'nama_barang' => $detail['nama_barang'],
+                        'stok' => $detail['qty'],
+                        'harga_beli' => $detail['harga'],
+                        'harga_jual' => $detail['harga'] * 1.2, // markup 20%
+                    ]);
+                }
+
+                // Hitung subtotal untuk detail ini
+                $jumlah = ($detail['qty'] * $detail['harga']) - (($detail['qty'] * $detail['harga']) * ($detail['diskon'] / 100));
+                if ($jumlah < 0) {
+                    throw new \Exception("Jumlah tidak valid untuk produk: {$detail['nama_barang']}");
+                }
+
+                $subtotal += $jumlah;
+
+                // Simpan detail pembelian
                 $pembelian->details()->create([
                     'produk_id' => $produk->id,
                     'qty' => $detail['qty'],
                     'harga' => $detail['harga'],
                     'diskon' => $detail['diskon'] ?? 0,
-                    'jumlah' => ($detail['qty'] * $detail['harga']) - (($detail['qty'] * $detail['harga']) * ($detail['diskon'] / 100)),
+                    'jumlah' => $jumlah,
                 ]);
             }
-    
-            // Tambahkan data hutang jika pembayaran kredit
+
+            // Gunakan PPN dari input manual
+            $ppnValue = $validated['ppn'] / 100; // Konversi ke desimal
+            $ppn = $subtotal * $ppnValue;
+            $totalHarga = $subtotal + $ppn;
+
+            // Perbarui subtotal, ppn, dan total harga di pembelian
+            $pembelian->update([
+                'subtotal' => $subtotal,
+                'ppn' => $ppn,
+                'total_harga' => $totalHarga,
+            ]);
+
+            // Tambahkan data hutang untuk semua metode pembayaran
+            $statusHutang = $validated['metode_pembayaran'] === 'tunai' ? 'Lunas' : 'Belum Lunas';
+            $pembayaran = $validated['metode_pembayaran'] === 'tunai' ? $totalHarga : 0; // Jika tunai, pembayaran langsung lunas
+            $jatuhTempo = $validated['metode_pembayaran'] === 'kredit' ? now()->addDays(30) : now(); // Jatuh tempo hanya berlaku untuk kredit
+
             \App\Models\Hutang::create([
                 'nama_supplier' => $validated['supplier'],
                 'tanggal' => $validated['tanggal'],
                 'no_faktur' => $validated['no_faktur'],
-                'jumlah' => $subtotal + ($subtotal * 0.1),
-                'jatuh_tempo' => $validated['metode_pembayaran'] === 'kredit' ? now()->addDays(30) : now(),
-                'status' => $validated['metode_pembayaran'] === 'kredit' ? 'Belum Lunas' : 'Lunas',
+                'jumlah' => $totalHarga,
+                'pembayaran' => $pembayaran,
+                'jatuh_tempo' => $jatuhTempo,
+                'status' => $statusHutang,
             ]);
-    
-            \DB::commit();
-    
+
+            DB::commit();
+
             return redirect()->route('pembelian.index')->with('success', 'Pembelian berhasil disimpan.');
         } catch (\Exception $e) {
-            \DB::rollBack();
-            \Log::error('Error saat menyimpan pembelian: ' . $e->getMessage());
-    
+            DB::rollBack();
+            Log::error('Error saat menyimpan pembelian: ' . $e->getMessage());
+
             return redirect()->back()->withErrors([
                 'error' => 'Terjadi kesalahan saat menyimpan pembelian: ' . $e->getMessage(),
             ]);
         }
     }
-    
 
     public function update(Request $request, $id)
     {
@@ -134,6 +156,7 @@ class PembelianController extends Controller
             'no_faktur' => 'required|unique:pembelian,no_faktur,' . $id,
             'tanggal' => 'required|date',
             'supplier' => 'required|string',
+            'ppn' => 'required|numeric|min:0', // Validasi untuk PPN
             'details' => 'required|array',
             'details.*.produk_id' => 'required|exists:produk,id',
             'details.*.qty' => 'required|integer|min:1',
@@ -179,13 +202,18 @@ class PembelianController extends Controller
                 ]);
             }
 
+            // Gunakan PPN dari input manual
+            $ppnValue = $validated['ppn'] / 100; // Konversi ke desimal
+            $ppn = $subtotal * $ppnValue;
+            $totalHarga = $subtotal + $ppn;
+
             $pembelian->update([
                 'no_faktur' => $validated['no_faktur'],
                 'tanggal' => $validated['tanggal'],
                 'supplier' => $validated['supplier'],
                 'subtotal' => $subtotal,
-                'ppn' => $subtotal * 0.1,
-                'total_harga' => $subtotal + ($subtotal * 0.1),
+                'ppn' => $ppn, // Simpan nilai PPN
+                'total_harga' => $totalHarga,
             ]);
 
             DB::commit();
@@ -232,4 +260,4 @@ class PembelianController extends Controller
             return redirect()->back()->withErrors(['error' => 'Terjadi kesalahan saat memuat data pembelian.']);
         }
     }
-}
+}   
