@@ -59,7 +59,16 @@ Route::get('/laporan/{id}/detail', [LaporanKeuntunganController::class, 'detail'
 
 Route::get('/laporan/export', [LaporanKeuntunganController::class, 'exportExcel'])->name('laporan.export');
 Route::get('/laporan/export-pdf', [LaporanKeuntunganController::class, 'exportPDF'])->name('laporan.export_pdf');
-Route::get('/api/produk', [PenjualanController::class, 'getProduk'])->name('api.produk');
 
 Route::get('piutang/{id}', [PiutangController::class, 'show'])->name('piutang.show');
 Route::post('/piutang/bayar/{id}', [PiutangController::class, 'bayarPiutang'])->name('piutang.bayar');
+Route::get('/laporan/filter', [LaporanKeuntunganController::class, 'filter'])->name('laporan.filter');
+Route::get('/laporan', [LaporanKeuntunganController::class, 'index'])->name('laporan.index');
+Route::get('/laporan/{id}/detail', [LaporanKeuntunganController::class, 'detail'])->name('laporan.detail');
+Route::get('piutang/{piutang}/edit', [PiutangController::class, 'edit'])->name('piutang.edit');
+Route::put('/piutang/{piutang}', [PiutangController::class, 'update'])->name('piutang.update');
+Route::get('/hutang/{id}', [HutangController::class, 'show'])->name('hutang.show');
+Route::get('/hutang/{id}/edit', [HutangController::class, 'edit'])->name('hutang.edit');
+Route::get('/api/produk', [ProdukController::class, 'getProduk']);
+Route::get('/produk/get-by-kode', [ProdukController::class, 'getByKode'])->name('produk.getByKode');
+Route::get('/produk/get-by-kode', [ProdukController::class, 'getByKode']);

@@ -107,4 +107,31 @@ public function update(Request $request, Produk $produk)
     return view('produk.show', compact('produk'));
 }
 
+public function getByKode(Request $request)
+{
+    $kode = $request->query('kode');
+    
+    // Cari produk berdasarkan kode
+    $produk = Produk::where('kode', $kode)->first();
+
+    if ($produk) {
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'id' => $produk->id,
+                'kode' => $produk->kode,
+                'nama_barang' => $produk->nama_barang,
+                'stok' => $produk->stok,
+                'harga_jual' => $produk->harga_jual,
+            ],
+        ]);
+    }
+
+    return response()->json([
+        'success' => false,
+        'message' => 'Produk tidak ditemukan.',
+    ], 404);
+}
+
+
 }

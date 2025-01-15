@@ -102,14 +102,12 @@ class LaporanKeuntunganController extends Controller
      */
     public function index(Request $request)
 {
-    // Set default periode ke 'bulanan'
     $periode = $request->input('periode', 'bulanan');
-    
-    // Tentukan nilai default untuk tanggal, bulan, dan tahun
     $tanggal = $request->input('tanggal', now()->format('Y-m-d'));
     $bulan = $request->input('bulan', now()->format('Y-m'));
     $tahun = $request->input('tahun', now()->year);
 
+    // Query dasar untuk data laporan
     $query = LaporanKeuntungan::query();
 
     // Filter berdasarkan periode
@@ -122,30 +120,32 @@ class LaporanKeuntunganController extends Controller
         $query->whereYear('tanggal', $tahun);
     }
 
-    // Ambil data laporan keuntungan
-    $laporan = $query->with('details')->paginate(10);
-    $rekap = $this->hitungRekapKeuntungan($query);
+    // Data untuk tabel (dengan pagination)
+    $laporan = $query->with('details')->paginate(10)->appends($request->query());
 
-    // Kirim data ke view
+    // Hitung rekap keuntungan (tanpa pagination)
+    $rekapQuery = LaporanKeuntungan::query();
+
+    if ($periode === 'harian') {
+        $rekapQuery->whereDate('tanggal', Carbon::parse($tanggal));
+    } elseif ($periode === 'bulanan') {
+        $rekapQuery->whereYear('tanggal', Carbon::parse($bulan)->year)
+                   ->whereMonth('tanggal', Carbon::parse($bulan)->month);
+    } elseif ($periode === 'tahunan') {
+        $rekapQuery->whereYear('tanggal', $tahun);
+    }
+
+    $rekap = [
+        'total_modal' => $rekapQuery->sum('total_modal'),
+        'total_penjualan' => $rekapQuery->sum('total_penjualan'),
+        'total_keuntungan' => $rekapQuery->sum('total_keuntungan'),
+    ];
+
     return view('laporan.index', compact('laporan', 'periode', 'tanggal', 'bulan', 'tahun', 'rekap'));
 }
 
+
     
-    
-    /**
-     * Menghitung rekap keuntungan total.
-     * 
-     * @param \Illuminate\Database\Eloquent\Builder $query
-     * @return array
-     */
-    private function hitungRekapKeuntungan($query)
-    {
-        return [
-            'total_modal' => $query->sum('total_modal'),
-            'total_penjualan' => $query->sum('total_penjualan'),
-            'total_keuntungan' => $query->sum('total_keuntungan'),
-        ];
-    }
 
     /**
      * Mengekspor laporan ke PDF.
@@ -193,19 +193,58 @@ class LaporanKeuntunganController extends Controller
      * @param int $id
      * @return \Illuminate\View\View
      */
-    public function detail($id)
-    {
-        try {
-            $laporan = LaporanKeuntungan::with('details.produk')->findOrFail($id); // Pastikan relasi produk dimuat
+    public function detail(Request $request, $id)
+{
+    try {
+        $laporan = LaporanKeuntungan::with('details.produk')->findOrFail($id);
 
-            if ($laporan->details->isEmpty()) {
-                \Log::warning("Tidak ada detail untuk laporan ID {$id}");
-            }
-
-            return view('laporan.detail', compact('laporan'));
-        } catch (\Exception $e) {
-            \Log::error('Error saat membuka detail laporan keuntungan', ['error' => $e->getMessage()]);
-            return redirect()->back()->with('error', 'Terjadi kesalahan saat membuka detail laporan.');
+        if ($laporan->details->isEmpty()) {
+            \Log::warning("Tidak ada detail untuk laporan ID {$id}");
         }
+
+        // Tangkap semua query parameter
+        $queryParams = $request->query();
+
+        return view('laporan.detail', compact('laporan', 'queryParams'));
+    } catch (\Exception $e) {
+        \Log::error('Error saat membuka detail laporan keuntungan', ['error' => $e->getMessage()]);
+        return redirect()->back()->with('error', 'Terjadi kesalahan saat membuka detail laporan.');
     }
 }
+
+    
+    public function filter(Request $request)
+    {
+        $periode = $request->input('periode', 'bulanan');
+        $tanggal = $request->input('tanggal', now()->format('Y-m-d'));
+        $bulan = $request->input('bulan', now()->format('Y-m'));
+        $tahun = $request->input('tahun', now()->year);
+    
+        // Query dasar untuk data laporan
+        $query = LaporanKeuntungan::query();
+    
+        if ($periode === 'harian') {
+            $query->whereDate('tanggal', Carbon::parse($tanggal));
+        } elseif ($periode === 'bulanan') {
+            $query->whereYear('tanggal', Carbon::parse($bulan)->year)
+                  ->whereMonth('tanggal', Carbon::parse($bulan)->month);
+        } elseif ($periode === 'tahunan') {
+            $query->whereYear('tanggal', $tahun);
+        }
+    
+        // Data untuk tabel (dengan pagination)
+        $laporan = $query->with('details')->paginate(10)->appends($request->query());
+    
+        // Hitung rekap keuntungan
+        $rekap = [
+            'total_modal' => $query->sum('total_modal'),
+            'total_penjualan' => $query->sum('total_penjualan'),
+            'total_keuntungan' => $query->sum('total_keuntungan'),
+        ];
+    
+        return response()->json([
+            'rekap' => $rekap,
+            'html' => view('laporan.partials.tabel', compact('laporan'))->render(),
+        ]);
+    }
+}    

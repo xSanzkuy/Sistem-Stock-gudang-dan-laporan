@@ -46,137 +46,161 @@ class PenjualanController extends Controller
     }
 
     public function store(Request $request)
-{
-    $validated = $request->validate([
-        'no_faktur' => 'required|string|max:255|unique:penjualan,no_faktur',
-        'tanggal' => 'required|date',
-        'penerima' => 'required|string|max:255',
-        'alamat' => 'nullable|string|max:255',
-        'metode_pembayaran' => 'required|in:kredit,tunai',
-        'details' => 'required|array',
-        'details.*.produk_id' => 'required|exists:produk,id',
-        'details.*.qty' => 'required|integer|min:1',
-        'details.*.harga' => 'required|numeric|min:0',
-        'details.*.diskon' => 'nullable|numeric|min:0|max:100',
-        'pembayaran' => 'nullable|numeric|min:0',  // Pembayaran tidak wajib
-    ]);
-
-    try {
-        $subtotal = 0;
-        $jumlahBarang = 0;
-        $totalKeuntungan = 0;
-
-        // Simpan data utama penjualan
-        $penjualan = Penjualan::create([
-            'no_faktur' => $validated['no_faktur'],
-            'tanggal' => $validated['tanggal'],
-            'penerima' => $validated['penerima'],
-            'alamat' => $validated['alamat'],
-            'subtotal' => 0,
-            'ppn' => 0,
-            'total_harga' => 0,
-            'jumlah_barang' => 0,
-        ]);
-
-        // Periksa stok dan simpan detail penjualan
-        foreach ($validated['details'] as $detail) {
-            $produk = Produk::findOrFail($detail['produk_id']);
-
-            // Cek stok produk
-            if ($produk->stok < $detail['qty']) {
-                return redirect()->back()->with('error', "Stok produk {$produk->nama_barang} tidak mencukupi.");
+    {
+        // Validasi data input dengan pesan error custom
+        $messages = [
+            'no_faktur.required' => 'Nomor faktur harus diisi.',
+            'no_faktur.unique' => 'Nomor faktur sudah terdaftar.',
+            'tanggal.required' => 'Tanggal harus diisi.',
+            'penerima.required' => 'Nama penerima harus diisi.',
+            'details.*.kode.required' => 'Kode barang harus diisi.',
+            'details.*.kode.exists' => 'Kode barang tidak ditemukan.',
+            'details.*.qty.required' => 'Kuantitas barang harus diisi.',
+            'details.*.qty.min' => 'Kuantitas barang minimal adalah 1.',
+            'details.*.harga.required' => 'Harga barang harus diisi.',
+            'details.*.harga.min' => 'Harga barang minimal adalah 0.',
+        ];
+    
+        $validated = $request->validate([
+            'no_faktur' => 'required|string|max:255|unique:penjualan,no_faktur',
+            'tanggal' => 'required|date',
+            'penerima' => 'required|string|max:255',
+            'alamat' => 'nullable|string|max:255',
+            'metode_pembayaran' => 'required|in:kredit,tunai',
+            'details' => 'required|array',
+            'details.*.kode' => 'required|string|exists:produk,kode',
+            'details.*.qty' => 'required|integer|min:1',
+            'details.*.harga' => 'required|numeric|min:0',
+            'details.*.diskon' => 'nullable|numeric|min:0|max:100',
+            'pembayaran' => 'nullable|numeric|min:0',
+        ], $messages);
+    
+        try {
+            $subtotal = 0;
+            $jumlahBarang = 0;
+            $totalKeuntungan = 0;
+    
+            // Buat penjualan baru
+            $penjualan = Penjualan::create([
+                'no_faktur' => $validated['no_faktur'],
+                'tanggal' => $validated['tanggal'],
+                'penerima' => $validated['penerima'],
+                'alamat' => $validated['alamat'],
+                'subtotal' => 0,
+                'ppn' => 0,
+                'total_harga' => 0,
+                'jumlah_barang' => 0,
+            ]);
+    
+            $details = []; // Menyimpan detail penjualan
+    
+            // Proses setiap detail penjualan
+            foreach ($validated['details'] as $detail) {
+                $produk = Produk::where('kode', $detail['kode'])->firstOrFail();
+    
+                // Validasi stok produk
+                if ($produk->stok < $detail['qty']) {
+                    return redirect()->back()
+                        ->withErrors(["Stok produk {$produk->nama_barang} tidak mencukupi. Stok tersedia: {$produk->stok}"])
+                        ->withInput();
+                }
+    
+                // Hitung subtotal, modal, dan keuntungan
+                $hargaPokok = $produk->harga_beli;
+                $jumlah = $detail['qty'] * $detail['harga'] * (1 - ($detail['diskon'] ?? 0) / 100);
+                $keuntungan = ($detail['harga'] - $hargaPokok) * $detail['qty'];
+    
+                $subtotal += $jumlah;
+                $jumlahBarang += $detail['qty'];
+                $totalKeuntungan += $keuntungan;
+    
+                // Kurangi stok produk
+                $produk->stok -= $detail['qty'];
+                $produk->save();
+    
+                // Tambahkan ke detail array
+                $details[] = [
+                    'produk_id' => $produk->id,
+                    'qty' => $detail['qty'],
+                    'harga' => $detail['harga'],
+                    'diskon' => $detail['diskon'] ?? 0,
+                    'jumlah' => $jumlah,
+                ];
             }
-
-            // Hitung jumlah, modal, dan keuntungan
-            $hargaPokok = $produk->harga_beli;
-            $jumlah = $detail['qty'] * $detail['harga'] * (1 - ($detail['diskon'] ?? 0) / 100);
-            $keuntungan = ($detail['harga'] - $hargaPokok) * $detail['qty'];
-
-            $subtotal += $jumlah;
-            $jumlahBarang += $detail['qty'];
-            $totalKeuntungan += $keuntungan;
-
-            // Kurangi stok produk
-            $produk->stok -= $detail['qty'];
-            $produk->save();
-
+    
             // Simpan detail penjualan
-            $penjualan->details()->create([
-                'produk_id' => $detail['produk_id'],
-                'qty' => $detail['qty'],
-                'harga' => $detail['harga'],
-                'diskon' => $detail['diskon'] ?? 0,
-                'jumlah' => $jumlah,
+            $penjualan->details()->createMany($details);
+    
+            // Hitung PPN dan total harga
+            $ppn = $subtotal * 0.11; // PPN 11%
+            $totalHarga = $subtotal + $ppn;
+    
+            // Update subtotal, PPN, dan total harga di penjualan
+            $penjualan->update([
+                'subtotal' => $subtotal,
+                'ppn' => $ppn,
+                'total_harga' => $totalHarga,
+                'jumlah_barang' => $jumlahBarang,
             ]);
-        }
-
-        // Hitung PPN dan total harga
-        $ppn = $subtotal * 0.11;
-        $totalHarga = $subtotal + $ppn;
-
-        // Update total di penjualan
-        $penjualan->update([
-            'subtotal' => $subtotal,
-            'ppn' => $ppn,
-            'total_harga' => $totalHarga,
-            'jumlah_barang' => $jumlahBarang,
-        ]);
-
-        // Buat laporan keuntungan
-        $laporan = LaporanKeuntungan::create([
-            'tanggal' => $penjualan->tanggal,
-            'total_transaksi' => 1, // Satu transaksi
-            'total_modal' => $subtotal - $totalKeuntungan, // Modal adalah subtotal dikurangi keuntungan
-            'total_penjualan' => $subtotal,
-            'total_keuntungan' => $totalKeuntungan,
-        ]);
-
-        // Simpan detail laporan keuntungan
-        foreach ($validated['details'] as $detail) {
-            $produk = Produk::findOrFail($detail['produk_id']);
-
-            LaporanKeuntunganDetail::create([
-                'laporan_keuntungan_id' => $laporan->id,
-                'produk_id' => $produk->id,
-                'nama_produk' => $produk->nama_barang,
-                'qty' => $detail['qty'],
-                'harga_beli' => $produk->harga_beli,
-                'harga_jual' => $detail['harga'],
-                'keuntungan' => ($detail['harga'] - $produk->harga_beli) * $detail['qty'],
+    
+            // Simpan laporan keuntungan
+            $laporan = LaporanKeuntungan::create([
+                'tanggal' => $penjualan->tanggal,
+                'total_transaksi' => 1,
+                'total_modal' => $subtotal - $totalKeuntungan,
+                'total_penjualan' => $subtotal,
+                'total_keuntungan' => $totalKeuntungan,
             ]);
+    
+            // Simpan detail laporan keuntungan
+            foreach ($details as $detail) {
+                $produk = Produk::findOrFail($detail['produk_id']);
+    
+                LaporanKeuntunganDetail::create([
+                    'laporan_keuntungan_id' => $laporan->id,
+                    'produk_id' => $produk->id,
+                    'nama_produk' => $produk->nama_barang,
+                    'qty' => $detail['qty'],
+                    'harga_beli' => $produk->harga_beli,
+                    'harga_jual' => $detail['harga'],
+                    'keuntungan' => ($detail['harga'] - $produk->harga_beli) * $detail['qty'],
+                ]);
+            }
+    
+            // Proses pembayaran
+            $pembayaran = $validated['pembayaran'] ?? 0;
+            $kekurangan = $totalHarga - $pembayaran;
+    
+            // Tambahkan data piutang
+            \App\Models\Piutang::create([
+                'nama_pelanggan' => $validated['penerima'],
+                'tanggal' => $validated['tanggal'],
+                'no_faktur' => $validated['no_faktur'],
+                'jumlah' => $totalHarga,
+                'pembayaran' => $pembayaran,
+                'kekurangan' => $kekurangan,
+                'status' => $pembayaran >= $totalHarga ? 'Lunas' : 'Belum Lunas',
+            ]);
+    
+            // Hitung halaman tempat data baru berada
+            $totalRecords = Penjualan::where('id', '<=', $penjualan->id)->count();
+            $perPage = 10;
+            $currentPage = ceil($totalRecords / $perPage);
+
+     // Commit transaction jika semua proses berhasil
+     DB::commit();
+
+            // Redirect ke halaman dengan data baru
+            return redirect()->route('penjualan.index', ['page' => $currentPage])
+                ->with('success', 'Penjualan berhasil disimpan!');
+        } catch (\Exception $e) {
+            DB::rollBack(); // Batalkan semua perubahan pada database jika terjadi kesalahan
+            \Log::error('Error saat menyimpan penjualan', ['error' => $e->getMessage()]);
+            return redirect()->back()->with('error', 'Terjadi kesalahan saat menyimpan penjualan.')->withInput();
         }
-
-        // Mengatur nilai pembayaran (default 0 jika tidak ada)
-        $pembayaran = $validated['pembayaran'] ?? 0;
-
-        // Hitung kekurangan piutang
-        $kekurangan = $totalHarga - $pembayaran;
-
-        // Tambahkan data piutang
-        $piutang = \App\Models\Piutang::create([
-            'nama_pelanggan' => $validated['penerima'],
-            'tanggal' => $validated['tanggal'],
-            'no_faktur' => $validated['no_faktur'],
-            'jumlah' => $totalHarga,
-            'pembayaran' => $pembayaran,
-            'kekurangan' => $kekurangan, // Kekurangan dihitung dari selisih totalHarga dan pembayaran
-            'status' => $pembayaran >= $totalHarga ? 'Lunas' : 'Belum Lunas',
-        ]);
-
-       
-        // Hitung halaman tempat data baru berada
-        $totalRecords = Penjualan::where('id', '<=', $penjualan->id)->count(); // Total data sampai data baru
-        $perPage = 10; // Jumlah data per halaman
-        $currentPage = ceil($totalRecords / $perPage); // Hitung halaman berdasarkan posisi data
-
-        // Redirect ke halaman dengan data baru
-        return redirect()->route('penjualan.index', ['page' => $currentPage])
-                         ->with('success', 'Penjualan berhasil disimpan!');
-    } catch (\Exception $e) {
-        \Log::error('Error saat menyimpan penjualan', ['error' => $e->getMessage()]);
-        return redirect()->back()->with('error', 'Terjadi kesalahan saat menyimpan penjualan.');
     }
-}
+    
+
 
 
 
@@ -292,20 +316,26 @@ public function edit(Penjualan $penjualan, Request $request)
 }
 
 // Tambahkan di PenjualanController
-public function getProduk(Request $request)
+public function getByKode(Request $request)
 {
-    $search = $request->input('q'); // Query pencarian
-    $produk = Produk::query();
+    $kode = $request->input('kode');
 
-    if ($search) {
-        $produk->where('nama_barang', 'like', '%' . $search . '%');
+    $produk = Produk::where('kode', $kode)->first();
+
+    if ($produk) {
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'nama_barang' => $produk->nama_barang,
+                'harga_jual' => $produk->harga_jual,
+            ]
+        ]);
     }
 
-    return response()->json(
-        $produk->take(10)->get(['id', 'nama_barang', 'stok']) // Ambil hanya 10 produk untuk efisiensi
-    );
+    return response()->json([
+        'success' => false,
+        'message' => 'Produk tidak ditemukan'
+    ]);
 }
-
-
 
 }

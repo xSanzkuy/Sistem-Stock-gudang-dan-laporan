@@ -8,6 +8,8 @@ use App\Models\ItemPembelian;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use App\Models\Hutang;
+
 
 class PembelianController extends Controller
 {
@@ -44,23 +46,25 @@ class PembelianController extends Controller
         $validated = $request->validate([
             'no_faktur' => 'required|unique:pembelian,no_faktur',
             'tanggal' => 'required|date',
-            'supplier' => 'required|string',
+            'supplier' => 'required|string|max:255',
             'metode_pembayaran' => 'required|in:kredit,tunai',
-            'ppn' => 'required|numeric|min:0', // Validasi untuk PPN
+            'ppn' => 'nullable|numeric|min:0',
+            'pembayaran' => 'nullable|numeric|min:0',
             'details' => 'required|array|min:1',
-            'details.*.kode' => 'required|string',
-            'details.*.jenis' => 'required|string',
-            'details.*.nama_barang' => 'required|string',
+            'details.*.kode' => 'required|string|max:255',
+            'details.*.jenis' => 'required|string|max:255',
+            'details.*.nama_barang' => 'required|string|max:255',
             'details.*.qty' => 'required|integer|min:1',
             'details.*.harga' => 'required|numeric|min:0',
             'details.*.diskon' => 'nullable|numeric|min:0|max:100',
         ]);
-
+    
         DB::beginTransaction();
-
+    
         try {
             $subtotal = 0;
-
+            $pembayaranAwal = $validated['pembayaran'] ?? 0;
+    
             // Simpan data pembelian utama
             $pembelian = Pembelian::create([
                 'no_faktur' => $validated['no_faktur'],
@@ -70,12 +74,12 @@ class PembelianController extends Controller
                 'ppn' => 0,
                 'total_harga' => 0,
             ]);
-
+    
             // Iterasi untuk menyimpan detail pembelian dan memperbarui stok produk
             foreach ($validated['details'] as $detail) {
                 // Cek apakah produk sudah ada berdasarkan kode
                 $produk = Produk::where('kode', $detail['kode'])->first();
-
+    
                 if ($produk) {
                     // Jika produk sudah ada, perbarui stok
                     $produk->stok += $detail['qty'];
@@ -91,15 +95,17 @@ class PembelianController extends Controller
                         'harga_jual' => $detail['harga'] * 1.2, // markup 20%
                     ]);
                 }
-
+    
                 // Hitung subtotal untuk detail ini
                 $jumlah = ($detail['qty'] * $detail['harga']) - (($detail['qty'] * $detail['harga']) * ($detail['diskon'] / 100));
+    
+                // Validasi jumlah tidak boleh negatif
                 if ($jumlah < 0) {
                     throw new \Exception("Jumlah tidak valid untuk produk: {$detail['nama_barang']}");
                 }
-
+    
                 $subtotal += $jumlah;
-
+    
                 // Simpan detail pembelian
                 $pembelian->details()->create([
                     'produk_id' => $produk->id,
@@ -109,46 +115,47 @@ class PembelianController extends Controller
                     'jumlah' => $jumlah,
                 ]);
             }
-
-            // Gunakan PPN dari input manual
+    
+            // Hitung PPN dan Total Harga
             $ppnValue = $validated['ppn'] / 100; // Konversi ke desimal
             $ppn = $subtotal * $ppnValue;
             $totalHarga = $subtotal + $ppn;
-
-            // Perbarui subtotal, ppn, dan total harga di pembelian
+    
+            // Perbarui subtotal, PPN, dan total harga di pembelian
             $pembelian->update([
                 'subtotal' => $subtotal,
                 'ppn' => $ppn,
                 'total_harga' => $totalHarga,
             ]);
-
-            // Tambahkan data hutang untuk semua metode pembayaran
+    
+            // Proses hutang berdasarkan metode pembayaran
             $statusHutang = $validated['metode_pembayaran'] === 'tunai' ? 'Lunas' : 'Belum Lunas';
-            $pembayaran = $validated['metode_pembayaran'] === 'tunai' ? $totalHarga : 0; // Jika tunai, pembayaran langsung lunas
-            $jatuhTempo = $validated['metode_pembayaran'] === 'kredit' ? now()->addDays(30) : now(); // Jatuh tempo hanya berlaku untuk kredit
-
-            \App\Models\Hutang::create([
+            $sisaHutang = $totalHarga - $pembayaranAwal;
+    
+            Hutang::create([
                 'nama_supplier' => $validated['supplier'],
                 'tanggal' => $validated['tanggal'],
                 'no_faktur' => $validated['no_faktur'],
                 'jumlah' => $totalHarga,
-                'pembayaran' => $pembayaran,
-                'jatuh_tempo' => $jatuhTempo,
-                'status' => $statusHutang,
+                'pembayaran' => $pembayaranAwal,
+                'kekurangan' => $sisaHutang,
+                'jatuh_tempo' => $validated['metode_pembayaran'] === 'kredit' ? now()->addDays(30) : now(),
+                'status' => $sisaHutang > 0 ? 'Belum Lunas' : 'Lunas',
             ]);
-
+    
             DB::commit();
-
+    
             return redirect()->route('pembelian.index')->with('success', 'Pembelian berhasil disimpan.');
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Error saat menyimpan pembelian: ' . $e->getMessage());
-
+    
             return redirect()->back()->withErrors([
                 'error' => 'Terjadi kesalahan saat menyimpan pembelian: ' . $e->getMessage(),
             ]);
         }
     }
+    
 
     public function update(Request $request, $id)
     {

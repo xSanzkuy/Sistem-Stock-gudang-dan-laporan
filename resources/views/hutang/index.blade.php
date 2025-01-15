@@ -12,6 +12,8 @@
                 <th>Tanggal</th>
                 <th>No Faktur</th>
                 <th>Jumlah</th>
+                <th>Pembayaran</th>
+                <th>Kekurangan</th>
                 <th>Jatuh Tempo</th>
                 <th>Status</th>
                 <th>Aksi</th>
@@ -24,11 +26,14 @@
                     <td>{{ $item->tanggal }}</td>
                     <td>{{ $item->no_faktur }}</td>
                     <td>{{ number_format($item->jumlah, 0, ',', '.') }}</td>
+                    <td>{{ number_format($item->pembayaran, 0, ',', '.') }}</td>
+                    <td>{{ number_format($item->kekurangan, 0, ',', '.') }}</td>
                     <td>{{ $item->jatuh_tempo }}</td>
                     <td>{{ $item->status }}</td>
                     <td>
-                        <a href="{{ route('hutang.edit', $item->id) }}" class="btn btn-warning btn-sm">Edit</a>
-                        
+                    <a href="{{ route('hutang.show', ['id' => $item->id, 'page' => request('page')]) }}" class="btn btn-info btn-sm">Riwayat</a>
+                    <a href="{{ route('hutang.edit', ['id' => $item->id, 'page' => request('page')]) }}" class="btn btn-warning btn-sm">Edit</a>
+
                         <!-- Tombol Hapus -->
                         <button type="button" class="btn btn-danger btn-sm btn-delete" data-id="{{ $item->id }}" data-name="{{ $item->nama_supplier }}">Hapus</button>
 
@@ -41,7 +46,7 @@
                 </tr>
             @empty
                 <tr>
-                    <td colspan="7" class="text-center">Tidak ada data hutang.</td>
+                    <td colspan="9" class="text-center">Tidak ada data hutang.</td>
                 </tr>
             @endforelse
         </tbody>

@@ -50,9 +50,9 @@
                             <td><input type="text" name="details[{{ $index }}][kode]" class="form-control" value="{{ $detail['kode'] }}" required></td>
                             <td><input type="text" name="details[{{ $index }}][jenis]" class="form-control" value="{{ $detail['jenis'] }}" required></td>
                             <td><input type="text" name="details[{{ $index }}][nama_barang]" class="form-control" value="{{ $detail['nama_barang'] }}" required></td>
-                            <td><input type="number" name="details[{{ $index }}][qty]" class="form-control" value="{{ $detail['qty'] }}" required></td>
-                            <td><input type="number" name="details[{{ $index }}][harga]" class="form-control" value="{{ $detail['harga'] }}" required></td>
-                            <td><input type="number" name="details[{{ $index }}][diskon]" class="form-control" value="{{ $detail['diskon'] ?? 0 }}" required></td>
+                            <td><input type="number" name="details[{{ $index }}][qty]" class="form-control qty" value="{{ $detail['qty'] }}" required></td>
+                            <td><input type="number" name="details[{{ $index }}][harga]" class="form-control harga" value="{{ $detail['harga'] }}" required></td>
+                            <td><input type="number" name="details[{{ $index }}][diskon]" class="form-control diskon" value="{{ $detail['diskon'] ?? 0 }}" required></td>
                             <td><button type="button" class="btn btn-danger remove-row">Hapus</button></td>
                         </tr>
                     @endforeach
@@ -61,9 +61,9 @@
                         <td><input type="text" name="details[0][kode]" class="form-control" required></td>
                         <td><input type="text" name="details[0][jenis]" class="form-control" required></td>
                         <td><input type="text" name="details[0][nama_barang]" class="form-control" required></td>
-                        <td><input type="number" name="details[0][qty]" class="form-control" required></td>
-                        <td><input type="number" name="details[0][harga]" class="form-control" required></td>
-                        <td><input type="number" name="details[0][diskon]" class="form-control" value="0" required></td>
+                        <td><input type="number" name="details[0][qty]" class="form-control qty" required></td>
+                        <td><input type="number" name="details[0][harga]" class="form-control harga" required></td>
+                        <td><input type="number" name="details[0][diskon]" class="form-control diskon" value="0" required></td>
                         <td><button type="button" class="btn btn-danger remove-row">Hapus</button></td>
                     </tr>
                 @endif
@@ -73,7 +73,18 @@
         <!-- Input PPN Manual -->
         <div class="mb-3">
             <label for="ppn">PPN (%)</label>
-            <input type="number" class="form-control" id="ppn" name="ppn" value="{{ old('ppn') }}" required>
+            <input type="number" class="form-control" id="ppn" name="ppn" value="{{ old('ppn') }}" >
+        </div>
+
+        <div class="mb-3">
+            <label for="pembayaran">Pembayaran (Rp)</label>
+            <input type="number" class="form-control" id="pembayaran" name="pembayaran" value="{{ old('pembayaran') }}" >
+        </div>
+
+        <!-- Total Harga -->
+        <div class="mb-3">
+            <label for="total_harga">Total Harga (Rp)</label>
+            <input type="text" class="form-control" id="total_harga" name="total_harga" value="0" readonly>
         </div>
 
         <div class="mb-3">
@@ -92,7 +103,7 @@
 
 @section('scripts')
 <script>
-  document.addEventListener('DOMContentLoaded', function () {
+document.addEventListener('DOMContentLoaded', function () {
     // Set tanggal otomatis ke hari ini
     const today = new Date().toISOString().split('T')[0];
     const tanggalInput = document.getElementById('tanggal');
@@ -109,9 +120,9 @@
                 <td><input type="text" name="details[${rowIndex}][kode]" class="form-control" required></td>
                 <td><input type="text" name="details[${rowIndex}][jenis]" class="form-control" required></td>
                 <td><input type="text" name="details[${rowIndex}][nama_barang]" class="form-control" required></td>
-                <td><input type="number" name="details[${rowIndex}][qty]" class="form-control" required></td>
-                <td><input type="number" name="details[${rowIndex}][harga]" class="form-control" required></td>
-                <td><input type="number" name="details[${rowIndex}][diskon]" class="form-control" value="0" required></td>
+                <td><input type="number" name="details[${rowIndex}][qty]" class="form-control qty" min="0" required></td>
+                <td><input type="number" name="details[${rowIndex}][harga]" class="form-control harga" min="0" required></td>
+                <td><input type="number" name="details[${rowIndex}][diskon]" class="form-control diskon" value="0" min="0" required></td>
                 <td><button type="button" class="btn btn-danger remove-row">Hapus</button></td>
             </tr>`;
         tbody.insertAdjacentHTML('beforeend', newRow);
@@ -122,8 +133,46 @@
     document.getElementById('purchase-details').addEventListener('click', function (e) {
         if (e.target.classList.contains('remove-row')) {
             e.target.closest('tr').remove();
+            calculateTotal();
         }
     });
-  });
+
+    // Hitung Total Harga Otomatis
+    document.getElementById('purchase-details').addEventListener('input', calculateTotal);
+    document.getElementById('ppn').addEventListener('input', calculateTotal);
+
+    function calculateTotal() {
+        let subtotal = 0;
+
+        document.querySelectorAll('#purchase-details tr').forEach(row => {
+            const qty = parseFloat(row.querySelector('.qty')?.value || 0);
+            const harga = parseFloat(row.querySelector('.harga')?.value || 0);
+            const diskon = parseFloat(row.querySelector('.diskon')?.value || 0);
+
+            // Validasi input
+            if (qty < 0 || harga < 0 || diskon < 0 || diskon > 100) {
+                alert('Pastikan input valid: Qty, Harga >= 0, Diskon 0-100%');
+                return;
+            }
+
+            // Hitung jumlah per baris
+            const jumlah = (qty * harga) - ((qty * harga) * (diskon / 100));
+            subtotal += jumlah;
+        });
+
+        // Ambil nilai PPN
+        const ppn = parseFloat(document.getElementById('ppn').value || 0);
+        if (ppn < 0) {
+            alert('PPN tidak boleh negatif');
+            return;
+        }
+
+        const totalHarga = subtotal + (subtotal * (ppn / 100));
+
+    // Tampilkan total harga dengan format Rupiah tanpa desimal
+    document.getElementById('total_harga').value = totalHarga.toLocaleString('id-ID').replace(/,\d{2}$/, '');
+    }
+});
+
 </script>
 @endsection

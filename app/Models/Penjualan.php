@@ -18,7 +18,7 @@ class Penjualan extends Model
     {
         return $this->hasMany(ItemPenjualan::class, 'penjualan_id');
     }
-
+    
     // Relasi dengan Piutang
     public function piutang()
     {

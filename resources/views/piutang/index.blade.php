@@ -27,50 +27,54 @@
     </div>
 
     <table class="table table-bordered">
-    <thead class="table-dark">
-        <tr>
-            <th>Nama Pelanggan</th>
-            <th>Tanggal</th>
-            <th>No Faktur</th>
-            <th>Jumlah</th>
-            <th>Pembayaran</th>
-            <th>Kekurangan</th>
-            <th>Status</th>
-            <th>Aksi</th>
-        </tr>
-    </thead>
-    <tbody>
-        @forelse($piutang as $item)
+        <thead class="table-dark">
             <tr>
-                <td>{{ $item->nama_pelanggan }}</td>
-                <td>{{ $item->tanggal }}</td>
-                <td>{{ $item->no_faktur }}</td>
-                <td>{{ number_format($item->jumlah, 0, ',', '.') }}</td>
-                <td>{{ number_format($item->pembayaran, 0, ',', '.') }}</td>
-                <td>{{ number_format($item->kekurangan, 0, ',', '.') }}</td>
-                <td>{{ $item->status }}</td>
-                <td>
-                <a href="{{ route('piutang.show', ['id' => $item->id, 'page' => request('page')]) }}" class="btn btn-info btn-sm">Riwayat</a>
-
-                    <a href="{{ route('piutang.edit', $item->id) }}" class="btn btn-warning btn-sm">Edit</a>
-                    <form action="{{ route('piutang.destroy', $item->id) }}" method="POST" style="display:inline;">
-                        @csrf
-                        @method('DELETE')
-                        <button type="submit" class="btn btn-danger btn-sm">Hapus</button>
-                    </form>
-                </td>
+                <th>Nama Pelanggan</th>
+                <th>Tanggal</th>
+                <th>No Faktur</th>
+                <th>Jumlah</th>
+                <th>Pembayaran</th>
+                <th>Kekurangan</th>
+                <th>Status</th>
+                <th>Aksi</th>
             </tr>
-        @empty
-            <tr>
-                <td colspan="8" class="text-center">Tidak ada data piutang.</td>
-            </tr>
-        @endforelse
-    </tbody>
-</table>
+        </thead>
+        <tbody>
+            @forelse($piutang as $item)
+                <tr>
+                    <td>{{ $item->nama_pelanggan }}</td>
+                    <td>{{ $item->tanggal }}</td>
+                    <td>{{ $item->no_faktur }}</td>
+                    <td>{{ number_format($item->jumlah, 0, ',', '.') }}</td>
+                    <td>{{ number_format($item->pembayaran, 0, ',', '.') }}</td>
+                    <td>{{ number_format($item->kekurangan, 0, ',', '.') }}</td>
+                    <td>{{ $item->status }}</td>
+                    <td>
+                        <!-- Tombol Riwayat -->
+                        <a href="{{ route('piutang.show', ['id' => $item->id, 'page' => request('page')]) }}" class="btn btn-info btn-sm">Riwayat</a>
 
+                        <a href="{{ route('piutang.edit', ['piutang' => $item->id, 'page' => request('page')]) }}" class="btn btn-warning btn-sm">Edit</a>
 
+                        <!-- Tombol Hapus -->
+                        <form action="{{ route('piutang.destroy', ['piutang' => $item->id, 'page' => request('page')]) }}" method="POST" style="display:inline;" id="form-delete-{{ $item->id }}">
+    @csrf
+    @method('DELETE')
+    <button type="submit" class="btn btn-danger btn-sm">Hapus</button>
+</form>
+
+                    </td>
+                </tr>
+            @empty
+                <tr>
+                    <td colspan="8" class="text-center">Tidak ada data piutang.</td>
+                </tr>
+            @endforelse
+        </tbody>
+    </table>
+
+    <!-- Pagination -->
     <div class="d-flex justify-content-center mt-4">
-        {{ $piutang->links('pagination::bootstrap-5') }}
+        {{ $piutang->appends(request()->query())->links('pagination::bootstrap-5') }}
     </div>
 </div>
 @endsection

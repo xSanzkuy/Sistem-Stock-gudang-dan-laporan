@@ -15,12 +15,12 @@
         </thead>
         <tbody>
             <tr>
-                <td>{{ $laporan->tanggal }}</td>
-                <td>{{ number_format($laporan->total_transaksi, 0) }}</td>
-                <td>Rp {{ number_format($laporan->total_modal, 0) }}</td>
-                <td>Rp {{ number_format($laporan->total_penjualan, 0) }}</td>
-                <td>Rp {{ number_format($laporan->total_keuntungan, 0) }}</td>
-            </tr>
+            <td>{{ $laporan->tanggal }}</td>
+<td>{{ number_format($laporan->total_transaksi, 0, ',', '.') }}</td>
+<td>Rp {{ number_format($laporan->total_modal, 0, ',', '.') }}</td>
+<td>Rp {{ number_format($laporan->total_penjualan, 0, ',', '.') }}</td>
+<td>Rp {{ number_format($laporan->total_keuntungan, 0, ',', '.') }}</td>
+   </tr>
         </tbody>
     </table>
 
@@ -40,10 +40,10 @@
                 <tr>
                     <td>{{ $detail->nama_produk }}</td>
                     <td>{{ $detail->qty }}</td>
-                    <td>Rp {{ number_format($detail->harga_beli, 2) }}</td>
-                    <td>Rp {{ number_format($detail->harga_jual, 2) }}</td>
-                    <td>Rp {{ number_format($detail->keuntungan, 2) }}</td>
-                </tr>
+                    <td>Rp {{ number_format($detail->harga_beli, 0, ',', '.') }}</td>
+<td>Rp {{ number_format($detail->harga_jual, 0, ',', '.') }}</td>
+<td>Rp {{ number_format($detail->keuntungan, 0, ',', '.') }}</td>
+</tr>
             @empty
                 <tr>
                     <td colspan="5">Tidak ada detail keuntungan untuk laporan ini.</td>
@@ -51,5 +51,12 @@
             @endforelse
         </tbody>
     </table>
+
+    <!-- Tombol Kembali -->
+    <div class="mt-4">
+        <a href="{{ route('laporan.index', $queryParams) }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Kembali
+        </a>
+    </div>
 </div>
 @endsection

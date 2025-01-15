@@ -19,7 +19,7 @@ return new class extends Migration
         $table->string('alamat')->nullable();
         $table->integer('jumlah_barang')->default(0);
         $table->decimal('subtotal', 15, 2)->default(0);
-        $table->decimal('ppn', 15, 2)->default(0);
+        $table->decimal('ppn', 20, 2)->nullable();
         $table->decimal('total_harga', 20, 2)->default(0);
         $table->decimal('keuntungan', 20, 2)->default(0); 
         $table->timestamps();

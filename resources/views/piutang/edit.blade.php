@@ -4,7 +4,7 @@
 <div class="container mt-5">
     <h1 class="mb-4">Edit Piutang</h1>
 
-    <form action="{{ route('piutang.update', $piutang->id) }}" method="POST">
+    <form action="{{ route('piutang.update', ['piutang' => $piutang->id, 'page' => $currentPage]) }}" method="POST">
         @csrf
         @method('PUT')
         <div class="mb-3">
@@ -21,11 +21,19 @@
         </div>
         <div class="mb-3">
             <label for="jumlah">Jumlah</label>
-            <input type="number" class="form-control" id="jumlah" name="jumlah" value="{{ $piutang->jumlah }}" required>
+            <input type="text" class="form-control" id="jumlah" name="jumlah" 
+                   value="{{ number_format($piutang->jumlah, 0, ',', '.') }}" 
+                   onfocus="removeFormatting(this)" 
+                   onblur="addFormatting(this)" 
+                   required>
         </div>
         <div class="mb-3">
             <label for="pembayaran">Pembayaran</label>
-            <input type="number" class="form-control" id="pembayaran" name="pembayaran" value="{{ $piutang->pembayaran }}" required>
+            <input type="text" class="form-control" id="pembayaran" name="pembayaran" 
+                   value="{{ number_format($piutang->pembayaran, 0, ',', '.') }}" 
+                   onfocus="removeFormatting(this)" 
+                   onblur="addFormatting(this)" 
+                   required>
         </div>
         <div class="mb-3">
             <label for="status">Status</label>
@@ -35,7 +43,23 @@
             </select>
         </div>
         <button type="submit" class="btn btn-success">Simpan Perubahan</button>
-        <a href="{{ route('piutang.index') }}" class="btn btn-secondary">Batal</a>
+        <a href="{{ route('piutang.index', ['page' => $currentPage]) }}" class="btn btn-secondary">Kembali</a>
     </form>
 </div>
+@endsection
+
+@section('scripts')
+<script>
+    // Fungsi untuk menghapus format angka
+    function removeFormatting(input) {
+        const value = input.value.replace(/\./g, ''); // Hilangkan titik
+        input.value = value; // Set nilai tanpa format
+    }
+
+    // Fungsi untuk menambahkan format angka
+    function addFormatting(input) {
+        const value = parseFloat(input.value.replace(/\./g, '')) || 0; // Konversi ke angka
+        input.value = value.toLocaleString('id-ID'); // Format angka dengan locale Indonesia
+    }
+</script>
 @endsection

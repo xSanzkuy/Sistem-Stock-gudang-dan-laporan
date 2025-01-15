@@ -13,4 +13,10 @@ class Pembelian extends Model
     {
         return $this->hasMany(ItemPembelian::class, 'pembelian_id');
     }
+
+    public function hutang()
+{
+    return $this->hasOne(Hutang::class, 'no_faktur', 'no_faktur');
+}
+
 }

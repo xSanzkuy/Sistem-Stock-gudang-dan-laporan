@@ -13,4 +13,8 @@ class PiutangHistory extends Model
     {
         return $this->belongsTo(Piutang::class);
     }
+    
+        // Timestamps akan secara otomatis diisi
+        public $timestamps = true;
+    
 }

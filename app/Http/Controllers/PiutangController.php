@@ -52,8 +52,6 @@ class PiutangController extends Controller
                      ->with('success', 'Data piutang berhasil ditambahkan.');
 }
 
-
-
     
 
 public function edit($id)
@@ -71,10 +69,14 @@ public function edit($id)
             'nama_pelanggan' => 'required|string|max:255',
             'tanggal' => 'required|date',
             'no_faktur' => 'required|string|max:255',
-            'jumlah' => 'required|numeric|min:0',
-            'pembayaran' => 'nullable|numeric|min:0',
+            'jumlah' => 'required|string|min:0',
+            'pembayaran' => 'nullable|string|min:0',
             'status' => 'required|in:Lunas,Belum Lunas',
         ]);
+        // Hapus format titik sebelum menyimpan ke database
+    $jumlah = str_replace('.', '', $request->jumlah);
+    $pembayaran = str_replace('.', '', $request->pembayaran);
+
     
         $piutang = Piutang::findOrFail($id);
     
@@ -87,19 +89,24 @@ public function edit($id)
             'status' => $piutang->status,
         ]);
     
-        // Hitung kekurangan
-        $kekurangan = $request->jumlah - ($request->pembayaran ?? 0);
-    
-        // Update data piutang
-        $piutang->update([
-            'nama_pelanggan' => $request->nama_pelanggan,
-            'tanggal' => $request->tanggal,
-            'no_faktur' => $request->no_faktur,
-            'jumlah' => $request->jumlah,
-            'pembayaran' => $request->pembayaran ?? 0,
-            'kekurangan' => $kekurangan, // Perbarui kekurangan
-            'status' => $kekurangan > 0 ? 'Belum Lunas' : 'Lunas', // Tentukan status berdasarkan kekurangan
-        ]);
+      // Hitung kekurangan
+      $jumlah = str_replace('.', '', $request->jumlah); // Hapus titik dari jumlah
+      $pembayaran = str_replace('.', '', $request->pembayaran); // Hapus titik dari pembayaran
+      
+      $kekurangan = $jumlah - ($pembayaran ?? 0);
+          // Pastikan status tidak berubah menjadi 'Lunas' jika kekurangan masih ada
+    $status = $kekurangan <= 0 ? 'Lunas' : 'Belum Lunas';
+
+    // Update data piutang
+    $piutang->update([
+        'nama_pelanggan' => $request->nama_pelanggan,
+        'tanggal' => $request->tanggal,
+        'no_faktur' => $request->no_faktur,
+        'jumlah' => $jumlah, // Simpan nilai tanpa format
+        'pembayaran' => $pembayaran, // Simpan nilai tanpa format
+        'kekurangan' => $kekurangan,
+        'status' => $kekurangan > 0 ? 'Belum Lunas' : 'Lunas',
+    ]);
       // Redirect ke halaman sebelumnya
       return redirect()->route('piutang.index', ['page' => request('page')])
       ->with('success', 'Data piutang berhasil diperbarui.');
