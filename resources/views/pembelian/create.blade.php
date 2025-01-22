@@ -44,41 +44,40 @@
                 </tr>
             </thead>
             <tbody id="purchase-details">
-                @if (old('details'))
-                    @foreach (old('details') as $index => $detail)
-                        <tr>
-                            <td><input type="text" name="details[{{ $index }}][kode]" class="form-control" value="{{ $detail['kode'] }}" required></td>
-                            <td><input type="text" name="details[{{ $index }}][jenis]" class="form-control" value="{{ $detail['jenis'] }}" required></td>
-                            <td><input type="text" name="details[{{ $index }}][nama_barang]" class="form-control" value="{{ $detail['nama_barang'] }}" required></td>
-                            <td><input type="number" name="details[{{ $index }}][qty]" class="form-control qty" value="{{ $detail['qty'] }}" required></td>
-                            <td><input type="number" name="details[{{ $index }}][harga]" class="form-control harga" value="{{ $detail['harga'] }}" required></td>
-                            <td><input type="number" name="details[{{ $index }}][diskon]" class="form-control diskon" value="{{ $detail['diskon'] ?? 0 }}" required></td>
-                            <td><button type="button" class="btn btn-danger remove-row">Hapus</button></td>
-                        </tr>
-                    @endforeach
-                @else
-                    <tr>
-                        <td><input type="text" name="details[0][kode]" class="form-control" required></td>
-                        <td><input type="text" name="details[0][jenis]" class="form-control" required></td>
-                        <td><input type="text" name="details[0][nama_barang]" class="form-control" required></td>
-                        <td><input type="number" name="details[0][qty]" class="form-control qty" required></td>
-                        <td><input type="number" name="details[0][harga]" class="form-control harga" required></td>
-                        <td><input type="number" name="details[0][diskon]" class="form-control diskon" value="0" required></td>
-                        <td><button type="button" class="btn btn-danger remove-row">Hapus</button></td>
-                    </tr>
-                @endif
+                <tr>
+                    <td>
+                        <select name="details[0][kode]" class="form-control select-kode">
+                            <option value="">Pilih Kode Barang</option>
+                            @foreach ($produk as $item)
+                                <option value="{{ $item->kode }}" 
+                                        data-jenis="{{ $item->jenis }}" 
+                                        data-nama="{{ $item->nama_barang }}" 
+                                        data-harga="{{ number_format($item->harga_beli, 0, '', '') }}">
+                                    {{ $item->kode }} - {{ $item->nama_barang }} (Stok: {{ $item->stok }})
+                                </option>
+                            @endforeach
+                        </select>
+                        <input type="text" name="details[0][kode_manual]" class="form-control input-kode mt-2 d-none" placeholder="Kode Barang Baru">
+                    </td>
+                    <td><input type="text" name="details[0][jenis]" class="form-control" required></td>
+                    <td><input type="text" name="details[0][nama_barang]" class="form-control nama-barang" required></td>
+                    <td><input type="number" name="details[0][qty]" class="form-control qty" min="0" required></td>
+                    <td><input type="number" name="details[0][harga]" class="form-control harga" min="0" required></td>
+                    <td><input type="number" name="details[0][diskon]" class="form-control diskon" value="0" min="0" required></td>
+                    <td><button type="button" class="btn btn-danger remove-row">Hapus</button></td>
+                </tr>
             </tbody>
         </table>
 
         <!-- Input PPN Manual -->
         <div class="mb-3">
             <label for="ppn">PPN (%)</label>
-            <input type="number" class="form-control" id="ppn" name="ppn" value="{{ old('ppn') }}" >
+            <input type="number" class="form-control" id="ppn" name="ppn" value="{{ old('ppn') }}">
         </div>
 
         <div class="mb-3">
             <label for="pembayaran">Pembayaran (Rp)</label>
-            <input type="number" class="form-control" id="pembayaran" name="pembayaran" value="{{ old('pembayaran') }}" >
+            <input type="number" class="form-control" id="pembayaran" name="pembayaran" value="{{ old('pembayaran') }}">
         </div>
 
         <!-- Total Harga -->
@@ -104,22 +103,35 @@
 @section('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    // Set tanggal otomatis ke hari ini
     const today = new Date().toISOString().split('T')[0];
     const tanggalInput = document.getElementById('tanggal');
     if (!tanggalInput.value) {
-        tanggalInput.value = today; // Set nilai default hanya jika input kosong
+        tanggalInput.value = today;
     }
 
-    // Menambahkan baris baru pada tabel
-    let rowIndex = {{ old('details') ? count(old('details')) : 1 }};
+    let rowIndex = 1;
+
+    // Tambahkan baris baru
     document.getElementById('add-row').addEventListener('click', function () {
-        const tbody = document.getElementById('purchase-details');
-        const newRow = `
-            <tr>
-                <td><input type="text" name="details[${rowIndex}][kode]" class="form-control" required></td>
+    const tbody = document.getElementById('purchase-details');
+    const newRow = `
+        <tr>
+            <td>
+                <select name="details[${rowIndex}][kode]" class="form-control select-kode">
+                    <option value="">Pilih Kode Barang</option>
+                    @foreach ($produk as $item)
+                        <option value="{{ $item->kode }}" 
+                                data-jenis="{{ $item->jenis }}" 
+                                data-nama="{{ $item->nama_barang }}" 
+                                data-harga="{{ $item->harga_beli }}">
+                            {{ $item->kode }} - {{ $item->nama_barang }} (Stok: {{ $item->stok }})
+                        </option>
+                    @endforeach
+                </select>
+                <input type="text" name="details[${rowIndex}][kode_manual]" class="form-control input-kode mt-2" placeholder="Kode Barang Baru">
+              </td>
                 <td><input type="text" name="details[${rowIndex}][jenis]" class="form-control" required></td>
-                <td><input type="text" name="details[${rowIndex}][nama_barang]" class="form-control" required></td>
+                <td><input type="text" name="details[${rowIndex}][nama_barang]" class="form-control nama-barang" required></td>
                 <td><input type="number" name="details[${rowIndex}][qty]" class="form-control qty" min="0" required></td>
                 <td><input type="number" name="details[${rowIndex}][harga]" class="form-control harga" min="0" required></td>
                 <td><input type="number" name="details[${rowIndex}][diskon]" class="form-control diskon" value="0" min="0" required></td>
@@ -129,7 +141,7 @@ document.addEventListener('DOMContentLoaded', function () {
         rowIndex++;
     });
 
-    // Hapus baris dari tabel
+    // Hapus baris
     document.getElementById('purchase-details').addEventListener('click', function (e) {
         if (e.target.classList.contains('remove-row')) {
             e.target.closest('tr').remove();
@@ -137,7 +149,62 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-    // Hitung Total Harga Otomatis
+    // Perbarui nama barang saat dropdown berubah
+    document.getElementById('purchase-details').addEventListener('change', function (e) {
+    if (e.target.classList.contains('select-kode')) {
+        const row = e.target.closest('tr');
+        const selectedOption = e.target.selectedOptions[0];
+
+        // Input yang akan diisi otomatis
+        const jenisInput = row.querySelector('input[name^="details"][name$="[jenis]"]');
+        const namaBarangInput = row.querySelector('input[name^="details"][name$="[nama_barang]"]');
+        const hargaInput = row.querySelector('input[name^="details"][name$="[harga]"]');
+        const kodeManualInput = row.querySelector('input[name^="details"][name$="[kode_manual]"]');
+
+        if (selectedOption.value) {
+            // Jika kode barang dipilih dari dropdown
+            jenisInput.value = selectedOption.dataset.jenis || '';
+            namaBarangInput.value = selectedOption.dataset.nama || '';
+            hargaInput.value = selectedOption.dataset.harga || 0;
+            kodeManualInput.value = ''; // Kosongkan input manual jika dropdown dipilih
+            kodeManualInput.classList.add('d-none'); // Sembunyikan input manual
+        } else {
+            // Reset jika dropdown kosong
+            jenisInput.value = '';
+            namaBarangInput.value = '';
+            hargaInput.value = 0;
+            kodeManualInput.classList.remove('d-none'); // Tampilkan input manual
+        }
+    }
+});
+
+// Event listener untuk mengatur kembali input manual jika kode manual diisi
+document.getElementById('purchase-details').addEventListener('input', function (e) {
+    if (e.target.classList.contains('input-kode')) {
+        const row = e.target.closest('tr');
+
+        // Reset input otomatis jika kode barang manual diisi
+        row.querySelector('select.select-kode').value = '';
+        row.querySelector('input[name^="details"][name$="[jenis]"]').value = '';
+        row.querySelector('input[name^="details"][name$="[nama_barang]"]').value = '';
+        row.querySelector('input[name^="details"][name$="[harga]"]').value = 0;
+    }
+});
+
+    // Toggle antara input manual dan dropdown
+    document.getElementById('purchase-details').addEventListener('change', function (e) {
+        if (e.target.classList.contains('select-kode')) {
+            const inputKode = e.target.closest('td').querySelector('.input-kode');
+            if (e.target.value === '') {
+                inputKode.classList.remove('d-none');
+            } else {
+                inputKode.classList.add('d-none');
+                inputKode.value = '';
+            }
+        }
+    });
+
+    // Hitung total harga
     document.getElementById('purchase-details').addEventListener('input', calculateTotal);
     document.getElementById('ppn').addEventListener('input', calculateTotal);
 
@@ -149,30 +216,16 @@ document.addEventListener('DOMContentLoaded', function () {
             const harga = parseFloat(row.querySelector('.harga')?.value || 0);
             const diskon = parseFloat(row.querySelector('.diskon')?.value || 0);
 
-            // Validasi input
-            if (qty < 0 || harga < 0 || diskon < 0 || diskon > 100) {
-                alert('Pastikan input valid: Qty, Harga >= 0, Diskon 0-100%');
-                return;
+            if (qty > 0 && harga > 0) {
+                const diskonAmount = (harga * qty) * (diskon / 100);
+                subtotal += (harga * qty) - diskonAmount;
             }
-
-            // Hitung jumlah per baris
-            const jumlah = (qty * harga) - ((qty * harga) * (diskon / 100));
-            subtotal += jumlah;
         });
 
-        // Ambil nilai PPN
         const ppn = parseFloat(document.getElementById('ppn').value || 0);
-        if (ppn < 0) {
-            alert('PPN tidak boleh negatif');
-            return;
-        }
-
-        const totalHarga = subtotal + (subtotal * (ppn / 100));
-
-    // Tampilkan total harga dengan format Rupiah tanpa desimal
-    document.getElementById('total_harga').value = totalHarga.toLocaleString('id-ID').replace(/,\d{2}$/, '');
+        const total = subtotal + (subtotal * (ppn / 100));
+        document.getElementById('total_harga').value = total.toLocaleString('id-ID', { maximumFractionDigits: 0 });
     }
 });
-
 </script>
 @endsection

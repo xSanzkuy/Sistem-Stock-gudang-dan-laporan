@@ -8,10 +8,27 @@ use App\Models\HutangHistory;
 
 class HutangController extends Controller
 {
-    public function index()
-    {
-        $hutang = Hutang::paginate(10); // Pagination with 10 items per page
-        return view('hutang.index', compact('hutang'));
+    public function index(Request $request)  
+    {  
+        $query = Hutang::query();  
+    
+        // Filter pencarian berdasarkan Nama Supplier atau No Faktur  
+        if ($request->has('search') && $request->search) {  
+            $query->where(function($q) use ($request) {  
+                $q->where('nama_supplier', 'like', '%' . $request->search . '%')  
+                  ->orWhere('no_faktur', 'like', '%' . $request->search . '%');  
+            });  
+        }  
+    
+        // Filter berdasarkan status  
+        if ($request->has('status') && $request->status) {  
+            $query->where('status', $request->status);  
+        }  
+    
+        // Pagination 10 transaksi per halaman  
+        $hutang = $query->paginate(10);  
+    
+        return view('hutang.index', compact('hutang'));  
     }
 
     public function create()

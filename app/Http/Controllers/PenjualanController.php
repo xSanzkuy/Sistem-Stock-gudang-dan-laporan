@@ -7,31 +7,51 @@ use App\Models\Produk;
 use App\Models\ItemPenjualan;
 use Illuminate\Http\Request;
 use App\Models\LaporanKeuntungan;
+use Illuminate\Support\Facades\DB; // Tambahkan ini
 use App\Models\LaporanKeuntunganDetail;
 
 class PenjualanController extends Controller
 {
-    public function index(Request $request)
-    {
-        $query = Penjualan::with('details.produk');
-    
-        if ($request->has('search') && $request->search) {
-            $query->where('no_faktur', 'like', '%' . $request->search . '%')
-                  ->orWhere('penerima', 'like', '%' . $request->search . '%');
-        }
-    
-        $penjualan = $query->paginate(10);
-    
-        $penjualan->each(function ($item) {
-            $produkList = [];
-            foreach ($item->details as $detail) {
-                $produkList[] = $detail->produk->nama_barang . ' (' . $detail->qty . ')';
-            }
-            $item->produk_nama = implode(', ', $produkList);
-        });
-    
-        return view('penjualan.index', compact('penjualan'));
-    }
+    public function index(Request $request)  
+{  
+    $query = Penjualan::with('details.produk');  
+
+    // Filter pencarian berdasarkan No Faktur atau Penerima  
+    if ($request->has('search') && $request->search) {  
+        $query->where(function($q) use ($request) {  
+            $q->where('no_faktur', 'like', '%' . $request->search . '%')  
+              ->orWhere('penerima', 'like', '%' . $request->search . '%');  
+        });  
+    }  
+
+    // Filter berdasarkan waktu  
+    if ($request->has('filter')) {  
+        $filter = $request->filter;  
+
+        if ($filter == 'daily') {  
+            $query->whereDate('tanggal', now());  
+        } elseif ($filter == 'monthly') {  
+            $query->whereMonth('tanggal', now()->month)  
+                  ->whereYear('tanggal', now()->year);  
+        } elseif ($filter == 'yearly') {  
+            $query->whereYear('tanggal', now()->year);  
+        }  
+    }  
+
+    // Pagination 10 transaksi per halaman  
+    $penjualan = $query->paginate(10);  
+
+    // Menghitung nama produk untuk setiap penjualan  
+    $penjualan->each(function ($item) {  
+        $produkList = [];  
+        foreach ($item->details as $detail) {  
+            $produkList[] = $detail->produk->nama_barang . ' (' . $detail->qty . ')';  
+        }  
+        $item->produk_nama = implode(', ', $produkList);  
+    });  
+
+    return view('penjualan.index', compact('penjualan'));  
+}
     
 
     public function create()
@@ -67,6 +87,7 @@ class PenjualanController extends Controller
             'penerima' => 'required|string|max:255',
             'alamat' => 'nullable|string|max:255',
             'metode_pembayaran' => 'required|in:kredit,tunai',
+            'ppn' => 'nullable|numeric|min:0', 
             'details' => 'required|array',
             'details.*.kode' => 'required|string|exists:produk,kode',
             'details.*.qty' => 'required|integer|min:1',
@@ -132,8 +153,10 @@ class PenjualanController extends Controller
             $penjualan->details()->createMany($details);
     
             // Hitung PPN dan total harga
-            $ppn = $subtotal * 0.11; // PPN 11%
+            $ppnValue = $validated['ppn'] / 100; // Konversi ke desimal
+            $ppn = $subtotal * $ppnValue;
             $totalHarga = $subtotal + $ppn;
+
     
             // Update subtotal, PPN, dan total harga di penjualan
             $penjualan->update([

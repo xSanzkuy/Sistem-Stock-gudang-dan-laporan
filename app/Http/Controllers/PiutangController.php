@@ -9,11 +9,28 @@ use App\Models\PiutangHistory;
 
 class PiutangController extends Controller
 {
-    public function index()
-    {
-        $piutang = Piutang::paginate(10); // Pagination with 10 items per page
-        return view('piutang.index', compact('piutang'));
-    }
+    public function index(Request $request)  
+{  
+    $query = Piutang::query();  
+
+    // Filter pencarian berdasarkan Nama Pelanggan atau No Faktur  
+    if ($request->has('search') && $request->search) {  
+        $query->where(function($q) use ($request) {  
+            $q->where('nama_pelanggan', 'like', '%' . $request->search . '%')  
+              ->orWhere('no_faktur', 'like', '%' . $request->search . '%');  
+        });  
+    }  
+
+    // Filter berdasarkan status  
+    if ($request->has('status') && $request->status) {  
+        $query->where('status', $request->status);  
+    }  
+
+    // Pagination 10 transaksi per halaman  
+    $piutang = $query->paginate(10);  
+
+    return view('piutang.index', compact('piutang'));  
+}
 
     public function create()
     {
